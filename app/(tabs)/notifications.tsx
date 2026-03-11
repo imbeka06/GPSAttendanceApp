@@ -18,7 +18,7 @@ export default function NotificationsScreen() {
       id: '2',
       type: 'document',
       title: 'New Study Material',
-      message: 'Dr. Kamau uploaded "Chapter 4: React Native UI" in Mobile Computing.',
+      message: 'Mr. Oyugi uploaded "Chapter 4 in Mobile Computing.',
       time: '2 hours ago',
       isRead: false,
     },
