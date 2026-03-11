@@ -9,6 +9,8 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
+        {/* ADDED THIS LINE FOR THE LECTURER FLOW */}
+        <Stack.Screen name="(lecturer)" />
       </Stack>
     </>
   );
