@@ -5,7 +5,8 @@ import { Alert, SafeAreaView, StyleSheet, Switch, Text, TextInput, TouchableOpac
 import { colors, shadowStyle } from '../theme/colors';
 
 export default function LoginScreen({ navigation }) {
-  const [userId, setUserId] = useState('');
+  const router = useRouter();
+    const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [isLecturer, setIsLecturer] = useState(false);
 
@@ -24,8 +25,9 @@ export default function LoginScreen({ navigation }) {
     });
 
     if (result.success) {
-      // We will navigate to the Dashboard here later
+      //  navigate to the Dashboard 
       Alert.alert("Success!", `Logged in as ${isLecturer ? 'Lecturer' : 'Student'}`);
+    router.replace('/(tabs)');
     }
   };
 
@@ -33,7 +35,7 @@ export default function LoginScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         
-        <Text style={styles.title}>React Native GPS-based{'\n'}student attendance app</Text>
+        <Text style={styles.title}>JKUAT STUDENT ATTENDANCE APP{'\n'}student attendance app</Text>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>{isLecturer ? 'Lecturer ID' : 'Student ID'}</Text>
