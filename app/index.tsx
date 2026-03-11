@@ -1,7 +1,7 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import React, { useState } from 'react';
 import { Alert, SafeAreaView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-// Notice the updated path to the src folder below!
+//   importing colors and shadowStyle from the theme file for consistent styling across the app
 import { colors, shadowStyle } from '../src/theme/colors';
 
 export default function LoginScreen() {
