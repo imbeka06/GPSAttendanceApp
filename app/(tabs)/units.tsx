@@ -10,8 +10,8 @@ export default function UnitsScreen() {
   // Mock data for the units a student is taking
   const myUnits = [
     { id: '1', name: 'Mobile Computing' },
-    { id: '2', name: 'Cloud Computing' },
-    { id: '3', name: 'Simulation and Modelling' },
+    { id: '2', name: 'Database Systems' },
+    { id: '3', name: 'Software Engineering' },
   ];
 
   return (
@@ -25,13 +25,16 @@ export default function UnitsScreen() {
           <View style={styles.buttonRow}>
             {/* Study Materials Button */}
             <TouchableOpacity style={[styles.actionButton, shadowStyle]}>
-              <Ionicons name="document-text" size={24} color={colors.primary} />
+              <Ionicons name="document-text" size={24} color={colors.white} />
               <Text style={styles.actionText}>Materials</Text>
             </TouchableOpacity>
 
-            {/* Class Chat Button */}
-            <TouchableOpacity style={[styles.actionButton, shadowStyle]}>
-              <Ionicons name="chatbubbles" size={24} color={colors.primary} />
+            {/* Class Chat Button (NOW WIRED UP!) */}
+            <TouchableOpacity 
+              style={[styles.actionButton, shadowStyle]}
+              onPress={() => router.push({ pathname: '/chat', params: { unitName: unit.name } })}
+            >
+              <Ionicons name="chatbubbles" size={24} color={colors.white} />
               <Text style={styles.actionText}>Class Chat</Text>
             </TouchableOpacity>
           </View>
@@ -44,25 +47,23 @@ export default function UnitsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: 20 },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: colors.primary, marginBottom: 20 },
-  
   unitCard: { 
     backgroundColor: colors.white, 
     borderRadius: 15, 
     padding: 20, 
-    marginBottom: 20,
-    borderLeftWidth: 5,
-    borderLeftColor: colors.primary, // Green accent line on the left
+    marginBottom: 20, 
+    borderLeftWidth: 5, 
+    borderLeftColor: colors.primary 
   },
   unitName: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 15 },
-  
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between' },
   actionButton: { 
     flex: 1, 
-    backgroundColor: colors.secondary, // Gold button
+    backgroundColor: colors.secondary, 
     padding: 15, 
     borderRadius: 10, 
-    alignItems: 'center',
-    marginHorizontal: 5,
+    alignItems: 'center', 
+    marginHorizontal: 5 
   },
   actionText: { color: colors.white, fontWeight: 'bold', marginTop: 5 },
 });
