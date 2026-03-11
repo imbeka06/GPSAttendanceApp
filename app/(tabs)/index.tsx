@@ -1,98 +1,81 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { colors, shadowStyle } from '../../src/theme/colors';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
-
-export default function HomeScreen() {
+export default function DashboardScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView style={styles.container}>
+      
+      {/* Top Green Section (Calendar Placeholder) */}
+      <View style={styles.topSection}>
+        <Text style={styles.welcomeText}>Welcome, Student</Text>
+        <Text style={styles.dateText}>March 2026</Text>
+        {/* We will add a real calendar component here later */}
+        <View style={styles.calendarPlaceholder}>
+           <Text style={styles.calendarText}>Calendar View Goes Here</Text>
+        </View>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* The Big 3D Gold Button */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={[styles.markButton, shadowStyle]}>
+          <Text style={styles.markButtonText}>Mark{'\n'}Attendance</Text>
+        </TouchableOpacity>
+        <Text style={styles.statusText}>
+          <Ionicons name="checkmark-circle" size={16} color={colors.success} /> You are in the classroom range
+        </Text>
+      </View>
+
+      {/* Recent Activity List */}
+      <View style={styles.activitySection}>
+        <Text style={styles.activityTitle}>Recent Activity</Text>
+        
+        {[1, 2, 3].map((item, index) => (
+          <View key={index} style={styles.activityCard}>
+            <View style={styles.activityIcon}>
+              <Ionicons name="checkmark" size={20} color={colors.white} />
+            </View>
+            <View style={styles.activityTextContainer}>
+              <Text style={styles.activityMainText}>Signed in - Mobile Computing</Text>
+              <Text style={styles.activitySubText}>10 minutes ago</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </View>
+        ))}
+      </View>
+
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: { flex: 1, backgroundColor: colors.background },
+  topSection: { backgroundColor: colors.primary, padding: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, paddingBottom: 40 },
+  welcomeText: { color: colors.white, fontSize: 16, opacity: 0.8 },
+  dateText: { color: colors.white, fontSize: 24, fontWeight: 'bold', marginVertical: 10 },
+  calendarPlaceholder: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 30, borderRadius: 15, alignItems: 'center' },
+  calendarText: { color: colors.white, fontWeight: '600' },
+  
+  buttonContainer: { alignItems: 'center', marginTop: -40, zIndex: 10 },
+  markButton: { 
+    backgroundColor: colors.secondary, 
+    width: 150, 
+    height: 150, 
+    borderRadius: 75, 
+    justifyContent: 'center', 
     alignItems: 'center',
-    gap: 8,
+    borderWidth: 4,
+    borderColor: colors.white,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  markButtonText: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  statusText: { marginTop: 15, color: colors.success, fontWeight: '600', fontSize: 14 },
+
+  activitySection: { padding: 20, marginTop: 10 },
+  activityTitle: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 15 },
+  activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, padding: 15, borderRadius: 12, marginBottom: 10, ...shadowStyle, elevation: 2 },
+  activityIcon: { backgroundColor: colors.secondary, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  activityTextContainer: { flex: 1 },
+  activityMainText: { fontSize: 14, fontWeight: 'bold', color: colors.textPrimary },
+  activitySubText: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
 });
