@@ -10,8 +10,8 @@ export default function UnitsScreen() {
   // Mock data for the units a student is taking
   const myUnits = [
     { id: '1', name: 'Mobile Computing' },
-    { id: '2', name: 'Database Systems' },
-    { id: '3', name: 'Software Engineering' },
+    { id: '2', name: 'Cloud Computing' },
+    { id: '3', name: 'Simulation and Modelling' },
   ];
 
   return (
