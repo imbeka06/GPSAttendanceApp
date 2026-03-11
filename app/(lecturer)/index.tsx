@@ -23,7 +23,7 @@ export default function LecturerDashboard() {
   const opacityAnims = useRef(lecturerUnits.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    // Staggered animation: makes cards slide up and fade in one by one
+    // Staggered animation: making cards slide up and fade in one by one
     const animations = lecturerUnits.map((_, index) => {
       return Animated.parallel([
         Animated.timing(slideAnims[index], { toValue: 0, duration: 400, useNativeDriver: true }),
@@ -36,7 +36,12 @@ export default function LecturerDashboard() {
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: () => router.replace('/' as any) }
+      { 
+        text: "Logout", 
+        style: "destructive", 
+        // Fixing Using push instead of replace, or routing to the exact file path
+        onPress: () => router.push('/' as any) 
+      }
     ]);
   };
 
