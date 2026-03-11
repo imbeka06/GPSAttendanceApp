@@ -1,10 +1,11 @@
 import * as LocalAuthentication from 'expo-local-authentication';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, SafeAreaView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-//   importing colors and shadowStyle from the theme file for consistent styling across the app
 import { colors, shadowStyle } from '../src/theme/colors';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [isLecturer, setIsLecturer] = useState(false);
@@ -24,15 +25,14 @@ export default function LoginScreen() {
     });
 
     if (result.success) {
-      Alert.alert("Success!", `Logged in as ${isLecturer ? 'Lecturer' : 'Student'}`);
+      router.replace('/(tabs)');
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        
-        <Text style={styles.title}>React Native GPS-based{'\n'}student attendance app</Text>
+        <Text style={styles.title}>Student Attendance App</Text>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>{isLecturer ? 'Lecturer ID' : 'Student ID'}</Text>
@@ -66,7 +66,6 @@ export default function LoginScreen() {
         <TouchableOpacity style={[styles.button, shadowStyle]} onPress={handleBiometricAuth}>
           <Text style={styles.buttonText}>Login with Biometrics</Text>
         </TouchableOpacity>
-
       </View>
 
       <Text style={styles.developerText}>Developer: Imbeka Musa</Text>
@@ -80,24 +79,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: colors.primary, textAlign: 'center', marginBottom: 40 },
   inputContainer: { marginBottom: 20 },
   label: { fontSize: 14, color: colors.textSecondary, marginBottom: 5, fontWeight: '600' },
-  input: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    fontSize: 16,
-  },
+  input: { backgroundColor: colors.white, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 15, marginBottom: 15, fontSize: 16 },
   toggleContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 },
   toggleText: { fontSize: 16, color: colors.textPrimary, fontWeight: '600' },
-  button: {
-    backgroundColor: colors.secondary, 
-    padding: 18,
-    borderRadius: 30, 
-    alignItems: 'center',
-    marginBottom: 20,
-  },
+  button: { backgroundColor: colors.secondary, padding: 18, borderRadius: 30, alignItems: 'center', marginBottom: 20 },
   buttonText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   developerText: { textAlign: 'center', color: colors.primary, fontWeight: 'bold', marginBottom: 20 },
 });

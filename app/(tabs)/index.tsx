@@ -6,18 +6,14 @@ import { colors, shadowStyle } from '../../src/theme/colors';
 export default function DashboardScreen() {
   return (
     <ScrollView style={styles.container}>
-      
-      {/* Top Green Section (Calendar Placeholder) */}
       <View style={styles.topSection}>
         <Text style={styles.welcomeText}>Welcome, Student</Text>
         <Text style={styles.dateText}>March 2026</Text>
-        {/* We will add a real calendar component here later */}
         <View style={styles.calendarPlaceholder}>
            <Text style={styles.calendarText}>Calendar View Goes Here</Text>
         </View>
       </View>
 
-      {/* The Big 3D Gold Button */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={[styles.markButton, shadowStyle]}>
           <Text style={styles.markButtonText}>Mark{'\n'}Attendance</Text>
@@ -27,12 +23,11 @@ export default function DashboardScreen() {
         </Text>
       </View>
 
-      {/* Recent Activity List */}
       <View style={styles.activitySection}>
         <Text style={styles.activityTitle}>Recent Activity</Text>
         
         {[1, 2, 3].map((item, index) => (
-          <View key={index} style={styles.activityCard}>
+          <View key={index} style={[styles.activityCard, shadowStyle]}>
             <View style={styles.activityIcon}>
               <Ionicons name="checkmark" size={20} color={colors.white} />
             </View>
@@ -44,7 +39,6 @@ export default function DashboardScreen() {
           </View>
         ))}
       </View>
-
     </ScrollView>
   );
 }
@@ -56,24 +50,13 @@ const styles = StyleSheet.create({
   dateText: { color: colors.white, fontSize: 24, fontWeight: 'bold', marginVertical: 10 },
   calendarPlaceholder: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 30, borderRadius: 15, alignItems: 'center' },
   calendarText: { color: colors.white, fontWeight: '600' },
-  
   buttonContainer: { alignItems: 'center', marginTop: -40, zIndex: 10 },
-  markButton: { 
-    backgroundColor: colors.secondary, 
-    width: 150, 
-    height: 150, 
-    borderRadius: 75, 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: colors.white,
-  },
+  markButton: { backgroundColor: colors.secondary, width: 150, height: 150, borderRadius: 75, justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: colors.white },
   markButtonText: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
   statusText: { marginTop: 15, color: colors.success, fontWeight: '600', fontSize: 14 },
-
   activitySection: { padding: 20, marginTop: 10 },
   activityTitle: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 15 },
-  activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, padding: 15, borderRadius: 12, marginBottom: 10, ...shadowStyle, elevation: 2 },
+  activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, padding: 15, borderRadius: 12, marginBottom: 10 },
   activityIcon: { backgroundColor: colors.secondary, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   activityTextContainer: { flex: 1 },
   activityMainText: { fontSize: 14, fontWeight: 'bold', color: colors.textPrimary },
