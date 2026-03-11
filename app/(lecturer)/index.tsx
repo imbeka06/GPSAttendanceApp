@@ -33,14 +33,18 @@ export default function LecturerDashboard() {
     Animated.stagger(100, animations).start();
   }, []);
 
-  const handleLogout = () => {
+ const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       { 
         text: "Logout", 
         style: "destructive", 
-        // Fixing Using push instead of replace, or routing to the exact file path
-        onPress: () => router.push('/' as any) 
+        // FIX: The timeout prevents the Alert box from blocking the router!
+        onPress: () => {
+          setTimeout(() => {
+            router.replace('/');
+          }, 100);
+        }
       }
     ]);
   };
