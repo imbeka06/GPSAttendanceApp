@@ -1,22 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, shadowStyle } from '../../src/theme/colors';
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Tap button to verify location');
   const [isInRange, setIsInRange] = useState<boolean | null>(null);
 
-  // --- CLASSROOM TARGET COORDINATES (Set to Juja / JKUAT roughly) ---
+  //  CLASSROOM TARGET COORDINATES
   const CLASS_LAT = -1.095333; 
   const CLASS_LON = 37.012222;
-  const ALLOWED_RADIUS_METERS = 50; // You must be within 50meters
+  const ALLOWED_RADIUS_METERS = 1000; // Left at 1km so you can test success from your room!
 
-  // The Haversine Formula: Calculates distance between two GPS coordinates
+  // The Haversine Formula
   const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3; // Earth's radius in meters
+    const R = 6371e3; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -31,7 +33,6 @@ export default function DashboardScreen() {
     setStatusMessage('Getting GPS signal...');
     
     try {
-      // 1. Ask for permission
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'We need location access to mark attendance.');
@@ -40,27 +41,15 @@ export default function DashboardScreen() {
         return;
       }
 
-      // 2. Get current location
-      let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
-      });
-
-      // 3. Calculate distance
-      const distance = getDistanceInMeters(
-        location.coords.latitude, 
-        location.coords.longitude, 
-        CLASS_LAT, 
-        CLASS_LON
-      );
+      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+      const distance = getDistanceInMeters(location.coords.latitude, location.coords.longitude, CLASS_LAT, CLASS_LON);
 
       setIsChecking(false);
 
-      // 4. Check if within radius
       if (distance <= ALLOWED_RADIUS_METERS) {
         setIsInRange(true);
         setStatusMessage(`You are in range! (${Math.round(distance)}m away)`);
         Alert.alert("Success!", "Attendance has been officially marked.");
-        // Here you would eventually send a success message to a database
       } else {
         setIsInRange(false);
         setStatusMessage(`Too far from class (${Math.round(distance)}m away)`);
@@ -73,16 +62,57 @@ export default function DashboardScreen() {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: () => router.replace('/') }
+    ]);
+  };
+
+  // Static mock week for the Calendar UI (Centered around current date)
+  const calendarDays = [
+    { dayName: 'Mon', date: 9, isActive: false },
+    { dayName: 'Tue', date: 10, isActive: false },
+    { dayName: 'Wed', date: 11, isActive: false },
+    { dayName: 'Thu', date: 12, isActive: true }, // Highlighted as today!
+    { dayName: 'Fri', date: 13, isActive: false },
+    { dayName: 'Sat', date: 14, isActive: false },
+  ];
+
   return (
     <ScrollView style={styles.container}>
+      
+      {/* Top Green Section with Header, Logout, and Calendar */}
       <View style={styles.topSection}>
-        <Text style={styles.welcomeText}>Welcome, Student</Text>
-        <Text style={styles.dateText}>March 2026</Text>
-        <View style={styles.calendarPlaceholder}>
-           <Text style={styles.calendarText}>Calendar View Goes Here</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.welcomeText}>Welcome, Student</Text>
+            <Text style={styles.dateText}>March 2026</Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Ionicons name="log-out-outline" size={28} color={colors.white} />
+          </TouchableOpacity>
         </View>
+
+        {/* The New Horizontal Calendar UI */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.calendarContainer}>
+          {calendarDays.map((day, index) => (
+            <View 
+              key={index} 
+              style={[
+                styles.dayCard, 
+                day.isActive && styles.activeDayCard, 
+                day.isActive && shadowStyle
+              ]}
+            >
+              <Text style={[styles.dayName, day.isActive && styles.activeDayText]}>{day.dayName}</Text>
+              <Text style={[styles.dayNumber, day.isActive && styles.activeDayText]}>{day.date}</Text>
+            </View>
+          ))}
+        </ScrollView>
       </View>
 
+      {/* The Big 3D Gold Button */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
           style={[styles.markButton, shadowStyle]} 
@@ -96,19 +126,16 @@ export default function DashboardScreen() {
           )}
         </TouchableOpacity>
         
-        <Text style={[
-          styles.statusText, 
-          isInRange === false && { color: colors.error } // Turns red if out of bounds
-        ]}>
+        <Text style={[styles.statusText, isInRange === false && { color: colors.error }]}>
           {isInRange === true && <Ionicons name="checkmark-circle" size={16} color={colors.success} />}
           {isInRange === false && <Ionicons name="close-circle" size={16} color={colors.error} />}
           {' '}{statusMessage}
         </Text>
       </View>
 
+      {/* Recent Activity List */}
       <View style={styles.activitySection}>
         <Text style={styles.activityTitle}>Recent Activity</Text>
-        
         {[1, 2, 3].map((item, index) => (
           <View key={index} style={[styles.activityCard, shadowStyle]}>
             <View style={styles.activityIcon}>
@@ -129,14 +156,24 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   topSection: { backgroundColor: colors.primary, padding: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, paddingBottom: 40 },
+  
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   welcomeText: { color: colors.white, fontSize: 16, opacity: 0.8 },
-  dateText: { color: colors.white, fontSize: 24, fontWeight: 'bold', marginVertical: 10 },
-  calendarPlaceholder: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 30, borderRadius: 15, alignItems: 'center' },
-  calendarText: { color: colors.white, fontWeight: '600' },
+  dateText: { color: colors.white, fontSize: 24, fontWeight: 'bold', marginVertical: 5 },
+  logoutButton: { padding: 5 },
+
+  calendarContainer: { marginTop: 15, flexDirection: 'row' },
+  dayCard: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 15, alignItems: 'center', marginRight: 10, width: 60 },
+  activeDayCard: { backgroundColor: colors.secondary }, // Gold background for today
+  dayName: { color: colors.white, fontSize: 14, opacity: 0.8, marginBottom: 5 },
+  dayNumber: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
+  activeDayText: { opacity: 1 },
+
   buttonContainer: { alignItems: 'center', marginTop: -40, zIndex: 10 },
   markButton: { backgroundColor: colors.secondary, width: 150, height: 150, borderRadius: 75, justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: colors.white },
   markButtonText: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
   statusText: { marginTop: 15, color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
+  
   activitySection: { padding: 20, marginTop: 10 },
   activityTitle: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 15 },
   activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, padding: 15, borderRadius: 12, marginBottom: 10 },
