@@ -12,7 +12,7 @@ export default function DashboardScreen() {
   // --- CLASSROOM TARGET COORDINATES (Set to Juja / JKUAT roughly) ---
   const CLASS_LAT = -1.095333; 
   const CLASS_LON = 37.012222;
-  const ALLOWED_RADIUS_METERS = 100; // You must be within 100 meters
+  const ALLOWED_RADIUS_METERS = 50; // You must be within 50meters
 
   // The Haversine Formula: Calculates distance between two GPS coordinates
   const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
