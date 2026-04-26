@@ -4,20 +4,20 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAttendance } from '../../src/context/AttendanceContext';
 import {
-  endAttendanceSession,
-  listenToLecturerActiveSession,
-  startAttendanceSession,
+    endAttendanceSession,
+    listenToLecturerActiveSession,
+    startAttendanceSession,
 } from '../../src/firebase/attendanceService';
 import { signOut } from '../../src/firebase/authService';
 import { colors, shadowStyle } from '../../src/theme/colors';
@@ -70,16 +70,14 @@ export default function LecturerDashboard() {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
+          router.replace('/');
           try {
             await signOut();
-            setCurrentUser(null);
-            setActiveSession(null);
           } catch {
             // ignore sign-out errors
           } finally {
-            // dismissAll resets the navigation stack fully — fixes the device logout bug
-            router.dismissAll();
-            router.replace('/');
+            setCurrentUser(null);
+            setActiveSession(null);
           }
         },
       },

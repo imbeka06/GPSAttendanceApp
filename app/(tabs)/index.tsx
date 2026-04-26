@@ -4,19 +4,19 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAttendance } from '../../src/context/AttendanceContext';
 import {
-  listenToAnyActiveSession,
-  listenToStudentRecord,
-  markStudentAttendance,
+    listenToAnyActiveSession,
+    listenToStudentRecord,
+    markStudentAttendance,
 } from '../../src/firebase/attendanceService';
 import { signOut } from '../../src/firebase/authService';
 import { colors, shadowStyle } from '../../src/theme/colors';
@@ -78,15 +78,14 @@ export default function DashboardScreen() {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
+          router.replace('/');
           try {
             await signOut();
-            setCurrentUser(null);
-            setActiveSession(null);
           } catch {
             // ignore
           } finally {
-            router.dismissAll();
-            router.replace('/');
+            setCurrentUser(null);
+            setActiveSession(null);
           }
         },
       },
