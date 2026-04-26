@@ -2,20 +2,26 @@ import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAttendance } from '../../src/context/AttendanceContext';
+import {
+  listenToAnyActiveSession,
+  listenToStudentRecord,
+  markStudentAttendance,
+} from '../../src/firebase/attendanceService';
+import { signOut } from '../../src/firebase/authService';
 import { colors, shadowStyle } from '../../src/theme/colors';
 
-// 1000m radius for easy testing; reduce to ~100m for production
+// 1 000 m for testing — reduce to ~100 m in production
 const ALLOWED_RADIUS_METERS = 1000;
 
 function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -33,130 +39,165 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { activeSession, markedAttendances, markAttendance, hasMarked } = useAttendance();
+  const { currentUser, setCurrentUser, activeSession, setActiveSession } = useAttendance();
 
-  const [isChecking, setIsChecking] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('Tap button to verify location');
-  const [isInRange, setIsInRange] = useState<boolean | null>(null);
+  const [isChecking,     setIsChecking]     = useState(false);
+  const [statusMessage,  setStatusMessage]  = useState('Tap button to verify location');
+  const [isInRange,      setIsInRange]      = useState<boolean | null>(null);
+  const [alreadyMarked,  setAlreadyMarked]  = useState(false);
 
-  const alreadyMarked = activeSession ? hasMarked(activeSession.unitId) : false;
+  // ── Real-time listener: any active session from any lecturer ─────────────
+  useEffect(() => {
+    const unsubscribe = listenToAnyActiveSession((session) => {
+      setActiveSession(session);
+      if (!session) {
+        setAlreadyMarked(false);
+        setStatusMessage('Tap button to verify location');
+        setIsInRange(null);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
+  // ── Real-time listener: has this student already marked? ─────────────────
+  useEffect(() => {
+    if (!activeSession || !currentUser) return;
+    const unsubscribe = listenToStudentRecord(
+      activeSession.id,
+      currentUser.uid,
+      (marked) => setAlreadyMarked(marked)
+    );
+    return unsubscribe;
+  }, [activeSession?.id, currentUser?.uid]);
+
+  // ── Logout ────────────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+            setCurrentUser(null);
+            setActiveSession(null);
+          } catch {
+            // ignore
+          } finally {
+            router.dismissAll();
+            router.replace('/');
+          }
+        },
+      },
+    ]);
+  };
+
+  // ── Mark Attendance ───────────────────────────────────────────────────────
   const handleMarkAttendance = async () => {
     if (!activeSession) {
       Alert.alert('No Active Session', 'Your lecturer has not started an attendance session yet.');
       return;
     }
     if (alreadyMarked) {
-      Alert.alert(
-        'Already Signed In',
-        `You have already marked attendance for ${activeSession.unitName}.`
-      );
+      Alert.alert('Already Signed In', `You have already marked attendance for ${activeSession.unitName}.`);
       return;
     }
+    if (!currentUser) return;
 
     setIsChecking(true);
     setStatusMessage('Getting GPS signal…');
 
     try {
-      // ── Step 1: GPS Verification ──────────────────────────────────
+      // Step 1 — GPS check
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location access is required to mark attendance.');
-        setIsChecking(false);
         setStatusMessage('Location permission denied');
+        Alert.alert('Permission Denied', 'Location access is required to mark attendance.');
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
-      });
-
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
       const distance = getDistanceInMeters(
-        location.coords.latitude,
-        location.coords.longitude,
+        loc.coords.latitude,
+        loc.coords.longitude,
         activeSession.classLat,
         activeSession.classLon
       );
 
       if (distance > ALLOWED_RADIUS_METERS) {
-        setIsChecking(false);
         setIsInRange(false);
         setStatusMessage(`Too far from class (${Math.round(distance)}m away)`);
         Alert.alert(
           'Out of Range',
-          `You must be near the classroom to sign in.\nYou are ${Math.round(distance)}m away.`
+          `You must be near the classroom.\nYou are ${Math.round(distance)}m away.`
         );
         return;
       }
 
       setStatusMessage('Location verified. Authenticating…');
 
-      // ── Step 2: Biometric Authentication ──────────────────────────
+      // Step 2 — Biometric check
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const isEnrolled  = await LocalAuthentication.isEnrolledAsync();
 
       if (!hasHardware || !isEnrolled) {
-        Alert.alert(
-          'Biometrics Unavailable',
-          'Biometrics not set up on this device. Contact your lecturer.'
-        );
-        setIsChecking(false);
         setStatusMessage('Biometrics unavailable');
+        Alert.alert('Biometrics Unavailable', 'Set up biometrics on this device to mark attendance.');
         return;
       }
 
-      const biometricResult = await LocalAuthentication.authenticateAsync({
+      const bio = await LocalAuthentication.authenticateAsync({
         promptMessage: `Sign into ${activeSession.unitCode} — ${activeSession.unitName}`,
         fallbackLabel: 'Use Passcode',
       });
 
-      setIsChecking(false);
-
-      if (biometricResult.success) {
-        setIsInRange(true);
-        setStatusMessage(`✓ Signed in! (${Math.round(distance)}m from class)`);
-        markAttendance(activeSession.unitId, activeSession.unitCode, activeSession.unitName);
-        Alert.alert(
-          '✅ Attendance Marked!',
-          `You have been signed into ${activeSession.unitCode} — ${activeSession.unitName}.`
-        );
-      } else {
+      if (!bio.success) {
         setIsInRange(false);
         setStatusMessage('Biometric verification failed');
         Alert.alert('Authentication Failed', 'Could not verify your identity. Please try again.');
+        return;
       }
-    } catch {
+
+      // Step 3 — Write to Firestore
+      await markStudentAttendance({
+        sessionId:    activeSession.id,
+        studentUid:   currentUser.uid,
+        studentName:  currentUser.displayName,
+        studentEmail: currentUser.email,
+        distanceMeters: distance,
+      });
+
+      setIsInRange(true);
+      setStatusMessage(`✓ Signed in! (${Math.round(distance)}m from class)`);
+      Alert.alert('✅ Attendance Marked!', `Signed into ${activeSession.unitCode} — ${activeSession.unitName}.`);
+    } catch (err: any) {
+      setStatusMessage('Error — please try again');
+      Alert.alert('Error', err.message ?? 'Could not mark attendance.');
+    } finally {
       setIsChecking(false);
-      setStatusMessage('Error getting location');
-      Alert.alert('Error', 'Could not get your location. Make sure GPS is turned on.');
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => router.replace('/') },
-    ]);
-  };
-
   const calendarDays = [
-    { dayName: 'Mon', date: 9, isActive: false },
+    { dayName: 'Mon', date: 9,  isActive: false },
     { dayName: 'Tue', date: 10, isActive: false },
     { dayName: 'Wed', date: 11, isActive: false },
-    { dayName: 'Thu', date: 12, isActive: true },
+    { dayName: 'Thu', date: 12, isActive: true  },
     { dayName: 'Fri', date: 13, isActive: false },
     { dayName: 'Sat', date: 14, isActive: false },
   ];
 
   const buttonDisabled = isChecking || !activeSession || alreadyMarked;
+  const displayName    = currentUser?.displayName ?? 'Student';
 
   return (
     <ScrollView style={styles.container}>
-      {/* ── Top Green Header ─────────────────────────────────────── */}
+      {/* ── Top Header ──────────────────────────────────────────── */}
       <View style={styles.topSection}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.welcomeText}>Welcome, Student</Text>
+            <Text style={styles.welcomeText}>Welcome, {displayName}</Text>
             <Text style={styles.dateText}>April 2026</Text>
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
@@ -170,14 +211,14 @@ export default function DashboardScreen() {
               key={index}
               style={[styles.dayCard, day.isActive && styles.activeDayCard, day.isActive && shadowStyle]}
             >
-              <Text style={[styles.dayName, day.isActive && styles.activeDayText]}>{day.dayName}</Text>
+              <Text style={[styles.dayName,   day.isActive && styles.activeDayText]}>{day.dayName}</Text>
               <Text style={[styles.dayNumber, day.isActive && styles.activeDayText]}>{day.date}</Text>
             </View>
           ))}
         </ScrollView>
       </View>
 
-      {/* ── Active Session Card ───────────────────────────────────── */}
+      {/* ── Active Session Card ──────────────────────────────────── */}
       {activeSession ? (
         <View style={[styles.activeSessionCard, shadowStyle]}>
           <View style={styles.activeSessionLeft}>
@@ -205,7 +246,7 @@ export default function DashboardScreen() {
         </View>
       )}
 
-      {/* ── Mark Attendance Button ────────────────────────────────── */}
+      {/* ── Mark Attendance Button ───────────────────────────────── */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.markButton, shadowStyle, buttonDisabled && styles.markButtonDisabled]}
@@ -222,32 +263,30 @@ export default function DashboardScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.statusText, isInRange === false && { color: colors.error }]}>
-          {isInRange === true && <Ionicons name="checkmark-circle" size={16} color={colors.success} />}
-          {isInRange === false && <Ionicons name="close-circle" size={16} color={colors.error} />}
+          {isInRange === true  && <Ionicons name="checkmark-circle" size={16} color={colors.success} />}
+          {isInRange === false && <Ionicons name="close-circle"     size={16} color={colors.error}   />}
           {' '}{statusMessage}
         </Text>
       </View>
 
-      {/* ── Recent Activity ───────────────────────────────────────── */}
+      {/* ── Recent Activity ─────────────────────────────────────── */}
       <View style={styles.activitySection}>
         <Text style={styles.activityTitle}>Recent Activity</Text>
-        {markedAttendances.length === 0 ? (
-          <Text style={styles.noActivityText}>No attendance marked this session</Text>
-        ) : (
-          markedAttendances.map((item, index) => (
-            <View key={index} style={[styles.activityCard, shadowStyle]}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="checkmark" size={20} color={colors.white} />
-              </View>
-              <View style={styles.activityTextContainer}>
-                <Text style={styles.activityMainText}>
-                  Signed In — {item.unitCode} {item.unitName}
-                </Text>
-                <Text style={styles.activitySubText}>{item.time}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        {alreadyMarked && activeSession ? (
+          <View style={[styles.activityCard, shadowStyle]}>
+            <View style={styles.activityIcon}>
+              <Ionicons name="checkmark" size={20} color={colors.white} />
             </View>
-          ))
+            <View style={styles.activityTextContainer}>
+              <Text style={styles.activityMainText}>
+                Signed In — {activeSession.unitCode} {activeSession.unitName}
+              </Text>
+              <Text style={styles.activitySubText}>This session</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </View>
+        ) : (
+          <Text style={styles.noActivityText}>No attendance marked this session</Text>
         )}
       </View>
     </ScrollView>
@@ -264,10 +303,10 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     paddingBottom: 40,
   },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   welcomeText: { color: colors.white, fontSize: 16, opacity: 0.8 },
-  dateText: { color: colors.white, fontSize: 24, fontWeight: 'bold', marginVertical: 5 },
-  logoutButton: { padding: 5 },
+  dateText:    { color: colors.white, fontSize: 24, fontWeight: 'bold', marginVertical: 5 },
+  logoutButton:{ padding: 5 },
 
   calendarContainer: { marginTop: 15 },
   dayCard: {
@@ -280,11 +319,10 @@ const styles = StyleSheet.create({
     width: 60,
   },
   activeDayCard: { backgroundColor: colors.secondary },
-  dayName: { color: colors.white, fontSize: 14, opacity: 0.8, marginBottom: 5 },
-  dayNumber: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
+  dayName:       { color: colors.white, fontSize: 14, opacity: 0.8, marginBottom: 5 },
+  dayNumber:     { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   activeDayText: { opacity: 1 },
 
-  // Active session card
   activeSessionCard: {
     backgroundColor: '#e8f5e9',
     marginHorizontal: 20,
@@ -297,83 +335,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.success,
   },
-  activeSessionLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  pulseDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.success,
-    marginRight: 12,
-  },
+  activeSessionLeft:  { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  pulseDot:           { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.success, marginRight: 12 },
   activeSessionTitle: { fontSize: 13, fontWeight: 'bold', color: colors.textPrimary },
-  activeSessionUnit: { fontSize: 15, fontWeight: 'bold', color: '#1b5e20', marginTop: 2 },
-  activeSessionTime: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  markedBadge: {
-    backgroundColor: colors.success,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  markedBadgeText: { color: colors.white, fontWeight: 'bold', fontSize: 12, marginLeft: 4 },
+  activeSessionUnit:  { fontSize: 15, fontWeight: 'bold', color: '#1b5e20', marginTop: 2 },
+  activeSessionTime:  { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  markedBadge:        { backgroundColor: colors.success, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginLeft: 8 },
+  markedBadgeText:    { color: colors.white, fontWeight: 'bold', fontSize: 12, marginLeft: 4 },
 
-  // No session card
-  noSessionCard: {
-    backgroundColor: colors.white,
-    marginHorizontal: 20,
-    marginTop: 15,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-  },
+  noSessionCard: { backgroundColor: colors.white, marginHorizontal: 20, marginTop: 15, borderRadius: 12, padding: 20, alignItems: 'center' },
   noSessionText: { fontSize: 15, fontWeight: 'bold', color: colors.textSecondary, marginTop: 8 },
-  noSessionSub: { fontSize: 12, color: '#aaa', marginTop: 4, textAlign: 'center' },
+  noSessionSub:  { fontSize: 12, color: '#aaa', marginTop: 4, textAlign: 'center' },
 
-  // Mark attendance button
-  buttonContainer: { alignItems: 'center', marginTop: 25, zIndex: 10 },
-  markButton: {
-    backgroundColor: colors.secondary,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: colors.white,
-  },
+  buttonContainer:    { alignItems: 'center', marginTop: 25, zIndex: 10 },
+  markButton:         { backgroundColor: colors.secondary, width: 150, height: 150, borderRadius: 75, justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: colors.white },
   markButtonDisabled: { backgroundColor: '#bbb' },
-  markButtonText: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
-  statusText: { marginTop: 15, color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
+  markButtonText:     { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  statusText:         { marginTop: 15, color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
 
-  // Activity
-  activitySection: { padding: 20, marginTop: 10 },
-  activityTitle: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 15 },
-  noActivityText: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 10,
-    fontStyle: 'italic',
-  },
-  activityCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  activityIcon: {
-    backgroundColor: colors.secondary,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
+  activitySection:       { padding: 20, marginTop: 10 },
+  activityTitle:         { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 15 },
+  noActivityText:        { color: colors.textSecondary, textAlign: 'center', marginTop: 10, fontStyle: 'italic' },
+  activityCard:          { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, padding: 15, borderRadius: 12, marginBottom: 10 },
+  activityIcon:          { backgroundColor: colors.secondary, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   activityTextContainer: { flex: 1 },
-  activityMainText: { fontSize: 14, fontWeight: 'bold', color: colors.textPrimary },
-  activitySubText: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
+  activityMainText:      { fontSize: 14, fontWeight: 'bold', color: colors.textPrimary },
+  activitySubText:       { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
 });
+
