@@ -70,7 +70,6 @@ export default function LecturerDashboard() {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
-          router.replace('/');
           try {
             await signOut();
           } catch {
