@@ -1,77 +1,70 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+/**
+ * AttendanceContext.tsx
+ *
+ * Holds two pieces of global state:
+ *  1. The currently signed-in AppUser (from Firebase Auth)
+ *  2. The active attendance session (from Firestore, real-time)
+ */
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthChange } from '../firebase/authService';
+import { ActiveSession } from '../firebase/attendanceService';
+import type { AppUser } from '../firebase/authService';
 
-// --- Types ---
-export interface AttendanceSession {
-  unitId: string;
-  unitCode: string;
-  unitName: string;
-  classLat: number;
-  classLon: number;
-  startedAt: string; // human-readable time string
-}
-
-export interface MarkedAttendance {
-  unitId: string;
-  unitCode: string;
-  unitName: string;
-  time: string;
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AttendanceContextType {
-  activeSession: AttendanceSession | null;
-  startSession: (session: AttendanceSession) => void;
-  endSession: () => void;
-  markedAttendances: MarkedAttendance[];
-  markAttendance: (unitId: string, unitCode: string, unitName: string) => void;
-  hasMarked: (unitId: string) => boolean;
+  // Auth
+  currentUser: AppUser | null;
+  authLoading: boolean;
+  setCurrentUser: (user: AppUser | null) => void;
+
+  // Active session (set by the relevant dashboard via Firestore listeners)
+  activeSession: ActiveSession | null;
+  setActiveSession: (session: ActiveSession | null) => void;
 }
 
-// --- Context ---
+// ─── Context ──────────────────────────────────────────────────────────────────
+
 const AttendanceContext = createContext<AttendanceContextType | undefined>(undefined);
 
-// --- Provider ---
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export function AttendanceProvider({ children }: { children: React.ReactNode }) {
-  const [activeSession, setActiveSession] = useState<AttendanceSession | null>(null);
-  const [markedAttendances, setMarkedAttendances] = useState<MarkedAttendance[]>([]);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
 
-  const startSession = useCallback((session: AttendanceSession) => {
-    setActiveSession(session);
-  }, []);
-
-  const endSession = useCallback(() => {
-    setActiveSession(null);
-  }, []);
-
-  const markAttendance = useCallback((unitId: string, unitCode: string, unitName: string) => {
-    setMarkedAttendances(prev => {
-      if (prev.some(m => m.unitId === unitId)) return prev; // prevent duplicates
-      return [
-        ...prev,
-        {
-          unitId,
-          unitCode,
-          unitName,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ];
+  // Listen for Firebase Auth state changes (handles app re-opens, token refresh)
+  useEffect(() => {
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      if (!firebaseUser) {
+        setCurrentUser(null);
+        setActiveSession(null);
+      }
+      // If firebaseUser exists but currentUser is null (e.g. app reload),
+      // the login screen will repopulate currentUser via signIn().
+      setAuthLoading(false);
     });
+    return unsubscribe;
   }, []);
-
-  const hasMarked = useCallback(
-    (unitId: string) => markedAttendances.some(m => m.unitId === unitId),
-    [markedAttendances]
-  );
 
   return (
     <AttendanceContext.Provider
-      value={{ activeSession, startSession, endSession, markedAttendances, markAttendance, hasMarked }}
+      value={{
+        currentUser,
+        authLoading,
+        setCurrentUser,
+        activeSession,
+        setActiveSession,
+      }}
     >
       {children}
     </AttendanceContext.Provider>
   );
 }
 
-// --- Hook ---
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
 export function useAttendance() {
   const context = useContext(AttendanceContext);
   if (!context) {
@@ -79,3 +72,4 @@ export function useAttendance() {
   }
   return context;
 }
+
