@@ -3,12 +3,12 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBlQxg4lg8uirru72KXnPuW6l_vLl7zCeo",
-  authDomain: "gpsattendanceapp-2cce7.firebaseapp.com",
-  projectId: "gpsattendanceapp-2cce7",
-  storageBucket: "gpsattendanceapp-2cce7.firebasestorage.app",
-  messagingSenderId: "902073372594",
-  appId: "1:902073372594:web:e0560709c17c65c1b1deab",
+  apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain:        process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
 // Prevent re-initialising when the module hot-reloads in dev
