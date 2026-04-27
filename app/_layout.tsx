@@ -30,6 +30,8 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(lecturer)" />
+        <Stack.Screen name="materials" />
+        <Stack.Screen name="chat" />
       </Stack>
     </AttendanceProvider>
   );
