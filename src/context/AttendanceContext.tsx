@@ -6,9 +6,9 @@
  *  2. The active attendance session (from Firestore, real-time)
  */
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthChange } from '../firebase/authService';
 import { ActiveSession } from '../firebase/attendanceService';
 import type { AppUser } from '../firebase/authService';
+import { onAuthChange } from '../firebase/authService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

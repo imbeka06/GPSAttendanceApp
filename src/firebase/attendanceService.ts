@@ -12,15 +12,15 @@
  *    markedAt (Timestamp), distanceMeters (number)
  */
 import {
-  addDoc,
-  collection,
-  doc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    doc,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import { db } from './config';
 

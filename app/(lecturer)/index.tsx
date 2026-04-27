@@ -19,8 +19,8 @@ import {
     listenToLecturerActiveSession,
     startAttendanceSession,
 } from '../../src/firebase/attendanceService';
-import { listenToLecturerUnits, Unit } from '../../src/firebase/unitService';
 import { signOut } from '../../src/firebase/authService';
+import { listenToLecturerUnits, Unit } from '../../src/firebase/unitService';
 import { colors, shadowStyle } from '../../src/theme/colors';
 
 export default function LecturerDashboard() {
