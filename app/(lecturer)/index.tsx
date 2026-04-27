@@ -95,23 +95,19 @@ export default function LecturerDashboard() {
 
     setIsActivating(true);
     try {
-      // Step 1 — Biometric auth
+      // Step 1 — Biometric auth (skipped on web/PC where hardware unavailable)
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled  = await LocalAuthentication.isEnrolledAsync();
 
-      if (!hasHardware || !isEnrolled) {
-        Alert.alert('Biometrics Unavailable', 'Set up biometrics on your device to activate attendance.');
-        return;
-      }
-
-      const bio = await LocalAuthentication.authenticateAsync({
-        promptMessage: `Activate attendance — ${unit.code} ${unit.name}`,
-        fallbackLabel: 'Use Passcode',
-      });
-
-      if (!bio.success) {
-        Alert.alert('Authentication Failed', 'Biometric check failed. Attendance not activated.');
-        return;
+      if (hasHardware && isEnrolled) {
+        const bio = await LocalAuthentication.authenticateAsync({
+          promptMessage: `Activate attendance — ${unit.code} ${unit.name}`,
+          fallbackLabel: 'Use Passcode',
+        });
+        if (!bio.success) {
+          Alert.alert('Authentication Failed', 'Biometric check failed. Attendance not activated.');
+          return;
+        }
       }
 
       // Step 2 — Capture GPS
@@ -160,8 +156,8 @@ export default function LecturerDashboard() {
             try {
               await endAttendanceSession(activeSession.id);
               // Firestore listener will automatically clear activeSession
-            } catch {
-              Alert.alert('Error', 'Could not end the session. Try again.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message ?? 'Could not end the session. Try again.');
             }
           },
         },
@@ -207,6 +203,22 @@ export default function LecturerDashboard() {
           </View>
           <TouchableOpacity style={styles.endBannerButton} onPress={handleEndSession}>
             <Text style={styles.endBannerText}>End</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.attendeesBannerButton}
+            onPress={() =>
+              router.push({
+                pathname: '/(lecturer)/session-records',
+                params: {
+                  sessionId: activeSession.id,
+                  unitCode:  activeSession.unitCode,
+                  unitName:  activeSession.unitName,
+                },
+              } as any)
+            }
+          >
+            <Ionicons name="people" size={16} color={colors.primary} />
+            <Text style={styles.attendeesBannerText}>Attendees</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -334,8 +346,10 @@ const styles = StyleSheet.create({
   activeDot:         { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success, marginRight: 10 },
   activeBannerTitle: { fontSize: 13, fontWeight: 'bold', color: colors.textPrimary },
   activeBannerSub:   { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  endBannerButton:   { backgroundColor: colors.error, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-  endBannerText:     { color: colors.white, fontWeight: 'bold', fontSize: 13 },
+  endBannerButton:      { backgroundColor: colors.error, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  endBannerText:        { color: colors.white, fontWeight: 'bold', fontSize: 13 },
+  attendeesBannerButton: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.primary, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginLeft: 6 },
+  attendeesBannerText:   { color: colors.primary, fontWeight: 'bold', fontSize: 12 },
 
   loadingBar:  { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff9e6', marginHorizontal: 20, marginTop: 10, borderRadius: 10, padding: 12 },
   loadingText: { marginLeft: 10, color: colors.textSecondary, fontSize: 13 },

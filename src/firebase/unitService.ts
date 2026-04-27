@@ -14,7 +14,7 @@ import {
     query,
     serverTimestamp,
     updateDoc,
-    where,
+    where
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -29,12 +29,20 @@ export interface Unit {
   /** Short alphanumeric code students use to self-enrol */
   joinCode: string;
   createdAt: string;
+  /** True when the lecturer has soft-deleted the unit */
+  archivedByLecturer?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateJoinCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  // 8 alphanumeric chars (letters + digits), minimum length
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
 }
 
 // ─── Lecturer: create a unit ──────────────────────────────────────────────────
@@ -48,9 +56,16 @@ export async function createUnit(params: {
   const ref = await addDoc(collection(db, 'units'), {
     ...params,
     joinCode: generateJoinCode(),
+    archivedByLecturer: false,
     createdAt: serverTimestamp(),
   });
   return ref.id;
+}
+
+// ── Lecturer: soft-delete a unit (students keep access for revision) ──────────
+
+export async function deleteUnit(unitId: string): Promise<void> {
+  await updateDoc(doc(db, 'units', unitId), { archivedByLecturer: true });
 }
 
 // ─── Lecturer: update unit details ────────────────────────────────────────────
@@ -73,7 +88,9 @@ export function listenToLecturerUnits(
     where('lecturerId', '==', lecturerId)
   );
   return onSnapshot(q, (snap) => {
-    const units: Unit[] = snap.docs.map((d) => {
+    const units: Unit[] = snap.docs
+      .filter((d) => !d.data().archivedByLecturer)
+      .map((d) => {
       const data = d.data();
       return {
         id: d.id,

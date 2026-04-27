@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     StyleSheet,
     Text,
@@ -15,7 +16,7 @@ import {
     View,
 } from 'react-native';
 import { useAttendance } from '../../src/context/AttendanceContext';
-import { listenToLecturerUnits, Unit } from '../../src/firebase/unitService';
+import { deleteUnit, listenToLecturerUnits, Unit } from '../../src/firebase/unitService';
 import { colors, shadowStyle } from '../../src/theme/colors';
 
 export default function LecturerUnitsScreen() {
@@ -32,6 +33,27 @@ export default function LecturerUnitsScreen() {
     });
     return unsub;
   }, [currentUser]);
+
+  const handleDelete = (item: Unit) => {
+    Alert.alert(
+      'Remove Unit',
+      `Remove "${item.code} — ${item.name}" from your list?\n\nStudents will keep access to the unit for revision.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteUnit(item.id);
+            } catch (err: any) {
+              Alert.alert('Error', err?.message ?? 'Could not remove unit.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const renderUnit = ({ item }: { item: Unit }) => (
     <View style={[styles.card, shadowStyle]}>
@@ -58,6 +80,14 @@ export default function LecturerUnitsScreen() {
       >
         <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
         <Text style={styles.materialsBtnText}>Manage Materials</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.deleteBtn, shadowStyle]}
+        onPress={() => handleDelete(item)}
+      >
+        <Ionicons name="trash-outline" size={18} color='#e53935' />
+        <Text style={styles.deleteBtnText}>Remove Unit</Text>
       </TouchableOpacity>
     </View>
   );
@@ -167,6 +197,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   materialsBtnText: { color: colors.white, fontWeight: 'bold', fontSize: 14 },
+
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 11,
+    borderRadius: 10,
+    gap: 6,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e53935',
+    backgroundColor: '#fff5f5',
+  },
+  deleteBtnText: { color: '#e53935', fontWeight: 'bold', fontSize: 14 },
 
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyTitle:     { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary, marginTop: 20, marginBottom: 10 },

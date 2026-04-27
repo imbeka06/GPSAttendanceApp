@@ -1,14 +1,13 @@
 /**
  * materialService.ts
- * Handles file uploads to Firebase Storage and metadata writes to Firestore.
+ * Handles file uploads to Cloudinary and metadata writes to Firestore.
  *
  * Firestore structure:
  *  units/{unitId}/materials/{materialId}
  *    title, type ('pdf'|'docx'|'pptx'|'link'), url, mimeType,
  *    uploadedBy, uploaderName, uploadedAt
  *
- * Firebase Storage path:
- *  materials/{unitId}/{timestamp}_{filename}
+ * File storage: Cloudinary (cloud name + unsigned upload preset from .env)
  */
 import {
     addDoc,
@@ -18,8 +17,11 @@ import {
     query,
     serverTimestamp,
 } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
-import { db, storage } from './config';
+import { db } from './config';
+
+const CLOUDINARY_CLOUD_NAME  = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME  ?? '';
+const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? '';
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/raw/upload`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,7 +47,7 @@ export const ALLOWED_MIME_TYPES: Record<string, MaterialType> = {
   'application/vnd.ms-powerpoint': 'pptx',
 };
 
-// ─── Upload a file to Firebase Storage then save metadata ────────────────────
+// ─── Upload a file to Cloudinary then save metadata to Firestore ─────────────
 
 export async function uploadMaterial(params: {
   unitId: string;
@@ -67,41 +69,62 @@ export async function uploadMaterial(params: {
     );
   }
 
-  // Fetch the file as a Blob from its local URI
-  const response = await fetch(fileUri);
-  const blob = await response.blob();
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error('Cloudinary is not configured. Check your .env file.');
+  }
 
-  // Upload to Firebase Storage
-  const timestamp = Date.now();
-  const storageRef = ref(storage, `materials/${unitId}/${timestamp}_${fileName}`);
+  // Build multipart form data for Cloudinary.
+  // On web, fileUri is a blob: URL — fetch it to get a real Blob.
+  // On native, use the { uri, type, name } RN shorthand.
+  const formData = new FormData();
+  if (fileUri.startsWith('blob:') || fileUri.startsWith('http')) {
+    const response = await fetch(fileUri);
+    const blob = await response.blob();
+    formData.append('file', blob, fileName);
+  } else {
+    formData.append('file', { uri: fileUri, type: mimeType, name: fileName } as any);
+  }
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
-  await new Promise<void>((resolve, reject) => {
-    const task = uploadBytesResumable(storageRef, blob, { contentType: mimeType });
-    task.on(
-      'state_changed',
-      (snapshot) => {
-        if (onProgress) {
-          onProgress(
-            Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-          );
-        }
-      },
-      reject,
-      async () => {
-        const downloadURL = await getDownloadURL(task.snapshot.ref);
-        // Save metadata to Firestore
-        await addDoc(collection(db, 'units', unitId, 'materials'), {
-          title,
-          type: materialType,
-          url: downloadURL,
-          mimeType,
-          uploadedBy,
-          uploaderName,
-          uploadedAt: serverTimestamp(),
-        });
-        resolve();
+  // Upload via XMLHttpRequest so we get progress events
+  const downloadURL = await new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', CLOUDINARY_UPLOAD_URL);
+
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
       }
-    );
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText);
+        resolve(data.secure_url as string);
+      } else {
+        // Surface the actual Cloudinary error message
+        let msg = `Upload failed (${xhr.status}).`;
+        try {
+          const err = JSON.parse(xhr.responseText);
+          if (err?.error?.message) msg = err.error.message;
+        } catch {}
+        reject(new Error(msg));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload.'));
+    xhr.send(formData);
+  });
+
+  // Save metadata to Firestore
+  await addDoc(collection(db, 'units', unitId, 'materials'), {
+    title,
+    type: materialType,
+    url: downloadURL,
+    mimeType,
+    uploadedBy,
+    uploaderName,
+    uploadedAt: serverTimestamp(),
   });
 }
 

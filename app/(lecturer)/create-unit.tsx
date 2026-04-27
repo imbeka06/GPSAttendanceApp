@@ -95,7 +95,7 @@ export default function CreateUnitScreen() {
         <Text style={styles.label}>Unit Name</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. Object Oriented Programming"
+          placeholder="e.g. Mobile Computing"
           placeholderTextColor={colors.textSecondary}
           value={name}
           onChangeText={setName}

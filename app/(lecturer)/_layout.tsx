@@ -11,6 +11,7 @@ export default function LecturerLayout() {
         <Stack.Screen name="units" />
         <Stack.Screen name="create-unit" />
         <Stack.Screen name="unit-materials" />
+        <Stack.Screen name="session-records" />
       </Stack>
     </>
   );

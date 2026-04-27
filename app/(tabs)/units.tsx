@@ -15,7 +15,7 @@ import {
     View,
 } from 'react-native';
 import { useAttendance } from '../../src/context/AttendanceContext';
-import { joinUnitByCode } from '../../src/firebase/enrollmentService';
+import { joinUnitByCode, leaveUnit } from '../../src/firebase/enrollmentService';
 import { listenToStudentUnits, Unit } from '../../src/firebase/unitService';
 import { colors, shadowStyle } from '../../src/theme/colors';
 
@@ -65,7 +65,28 @@ export default function UnitsScreen() {
       setJoining(false);
     }
   };
-
+  // ── Leave a unit ──────────────────────────────────────────────────────────
+  const handleLeave = (item: Unit) => {
+    if (!currentUser) return;
+    Alert.alert(
+      'Leave Unit',
+      `Leave "${item.code} — ${item.name}"? You can rejoin later with the join code.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveUnit(currentUser.uid, item.id);
+            } catch (err: any) {
+              Alert.alert('Error', err?.message ?? 'Could not leave unit.');
+            }
+          },
+        },
+      ]
+    );
+  };
   // ── Render each enrolled unit card ────────────────────────────────────────
   const renderUnit = ({ item }: { item: Unit }) => (
     <View style={[styles.unitCard, shadowStyle]}>
@@ -95,12 +116,18 @@ export default function UnitsScreen() {
         {/* Class Chat */}
         <TouchableOpacity
           style={[styles.actionButton, styles.chatBtn, shadowStyle]}
-          onPress={() => router.push({ pathname: '/chat', params: { unitName: item.name } })}
+          onPress={() => router.push({ pathname: '/chat', params: { unitId: item.id, unitName: item.name } })}
         >
           <Ionicons name="chatbubbles" size={22} color={colors.white} />
           <Text style={styles.actionText}>Class Chat</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Leave unit */}
+      <TouchableOpacity style={styles.leaveBtn} onPress={() => handleLeave(item)}>
+        <Ionicons name="exit-outline" size={16} color={colors.textSecondary} />
+        <Text style={styles.leaveBtnText}>Leave Unit</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -157,16 +184,15 @@ export default function UnitsScreen() {
             </View>
 
             <Text style={styles.modalSubtitle}>
-              Enter the 6-character code your lecturer shared with you.
+              Enter the join code your lecturer shared with you.
             </Text>
 
             <TextInput
               style={styles.codeInput}
-              placeholder="e.g. AB12CD"
+              placeholder="e.g. AB12CD34"
               placeholderTextColor={colors.textSecondary}
               value={joinCode}
               onChangeText={(t) => setJoinCode(t.toUpperCase())}
-              maxLength={6}
               autoCapitalize="characters"
               autoCorrect={false}
             />
@@ -237,6 +263,8 @@ const styles = StyleSheet.create({
   materialsBtn: { backgroundColor: colors.primary },
   chatBtn:      { backgroundColor: colors.secondary },
   actionText:   { color: colors.white, fontWeight: 'bold', fontSize: 13 },
+  leaveBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 10, marginTop: 6, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
+  leaveBtnText: { fontSize: 12, color: colors.textSecondary },
 
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyTitle:     { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary, marginTop: 20, marginBottom: 10 },

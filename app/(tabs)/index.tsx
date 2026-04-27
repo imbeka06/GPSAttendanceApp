@@ -4,25 +4,25 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAttendance } from '../../src/context/AttendanceContext';
 import {
-    listenToAnyActiveSession,
-    listenToStudentRecord,
-    markStudentAttendance,
+  listenToAnyActiveSession,
+  listenToStudentRecord,
+  markStudentAttendance,
 } from '../../src/firebase/attendanceService';
 import { signOut } from '../../src/firebase/authService';
 import { colors, shadowStyle } from '../../src/theme/colors';
 
-// 1 000 m for testing — reduce to ~100 m in production
-const ALLOWED_RADIUS_METERS = 1000;
+// 20 m geofence — student must be within 20 metres of the lecturer
+const ALLOWED_RADIUS_METERS = 20;
 
 function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3;
@@ -159,11 +159,12 @@ export default function DashboardScreen() {
 
       // Step 3 — Write to Firestore
       await markStudentAttendance({
-        sessionId:    activeSession.id,
-        studentUid:   currentUser.uid,
-        studentName:  currentUser.displayName,
-        studentEmail: currentUser.email,
-        distanceMeters: distance,
+        sessionId:          activeSession.id,
+        studentUid:         currentUser.uid,
+        studentName:        currentUser.displayName,
+        studentEmail:       currentUser.email,
+        registrationNumber: currentUser.registrationNumber ?? '—',
+        distanceMeters:     distance,
       });
 
       setIsInRange(true);
@@ -177,14 +178,21 @@ export default function DashboardScreen() {
     }
   };
 
-  const calendarDays = [
-    { dayName: 'Mon', date: 9,  isActive: false },
-    { dayName: 'Tue', date: 10, isActive: false },
-    { dayName: 'Wed', date: 11, isActive: false },
-    { dayName: 'Thu', date: 12, isActive: true  },
-    { dayName: 'Fri', date: 13, isActive: false },
-    { dayName: 'Sat', date: 14, isActive: false },
-  ];
+  const today = new Date();
+  const todayDate = today.getDate();
+  const todayDay = today.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  // Build Mon–Sat of the current week
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const calendarDays = [1, 2, 3, 4, 5, 6].map((d) => {
+    const diff = d - todayDay;
+    const dayDate = new Date(today);
+    dayDate.setDate(todayDate + diff);
+    return {
+      dayName: DAY_NAMES[d],
+      date: dayDate.getDate(),
+      isActive: d === todayDay,
+    };
+  });
 
   const buttonDisabled = isChecking || !activeSession || alreadyMarked;
   const displayName    = currentUser?.displayName ?? 'Student';
@@ -196,7 +204,7 @@ export default function DashboardScreen() {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.welcomeText}>Welcome, {displayName}</Text>
-            <Text style={styles.dateText}>April 2026</Text>
+            <Text style={styles.dateText}>{today.toLocaleString('default', { month: 'long', year: 'numeric' })}</Text>
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <Ionicons name="log-out-outline" size={28} color={colors.white} />

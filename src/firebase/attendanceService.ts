@@ -16,6 +16,7 @@ import {
     collection,
     doc,
     onSnapshot,
+    orderBy,
     query,
     serverTimestamp,
     setDoc,
@@ -25,6 +26,15 @@ import {
 import { db } from './config';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface AttendanceRecord {
+  studentUid: string;
+  studentName: string;
+  studentEmail: string;
+  registrationNumber: string;
+  distanceMeters: number;
+  markedAt: string;
+}
 
 export interface ActiveSession {
   id: string;
@@ -139,6 +149,7 @@ export async function markStudentAttendance(params: {
   studentUid: string;
   studentName: string;
   studentEmail: string;
+  registrationNumber: string;
   distanceMeters: number;
 }): Promise<void> {
   // Use studentUid as the record doc ID — guarantees one record per student per session
@@ -148,6 +159,7 @@ export async function markStudentAttendance(params: {
       studentUid: params.studentUid,
       studentName: params.studentName,
       studentEmail: params.studentEmail,
+      registrationNumber: params.registrationNumber,
       distanceMeters: Math.round(params.distanceMeters),
       markedAt: serverTimestamp(),
     }
@@ -163,4 +175,32 @@ export function listenToStudentRecord(
 ) {
   const ref = doc(db, 'sessions', sessionId, 'records', studentUid);
   return onSnapshot(ref, (snap) => onChange(snap.exists()));
+}
+
+// ─── Lecturer: real-time list of students who signed in ──────────────────────
+
+export function listenToSessionRecords(
+  sessionId: string,
+  onChange: (records: AttendanceRecord[]) => void
+) {
+  const q = query(
+    collection(db, 'sessions', sessionId, 'records'),
+    orderBy('markedAt', 'asc')
+  );
+  return onSnapshot(q, (snap) => {
+    const records: AttendanceRecord[] = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        studentUid:         d.id,
+        studentName:        data.studentName ?? '—',
+        studentEmail:       data.studentEmail ?? '—',
+        registrationNumber: data.registrationNumber ?? '—',
+        distanceMeters:     data.distanceMeters ?? 0,
+        markedAt: data.markedAt?.toDate
+          ? data.markedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : '—',
+      };
+    });
+    onChange(records);
+  });
 }

@@ -13,6 +13,7 @@
  */
 import {
     collection,
+    deleteDoc,
     doc,
     getDocs,
     query,
@@ -79,6 +80,15 @@ export async function joinUnitByCode(params: {
   });
 
   return { unitId, unitName: unitData.name, unitCode: unitData.code };
+}
+
+// ─── Student: leave/remove a unit from their list ────────────────────────────
+
+export async function leaveUnit(
+  studentUid: string,
+  unitId: string
+): Promise<void> {
+  await deleteDoc(doc(db, 'enrollments', `${studentUid}_${unitId}`));
 }
 
 // ─── Check if a student is enrolled in a specific unit ────────────────────────
