@@ -19,39 +19,38 @@ import {
     listenToLecturerActiveSession,
     startAttendanceSession,
 } from '../../src/firebase/attendanceService';
+import { listenToLecturerUnits, Unit } from '../../src/firebase/unitService';
 import { signOut } from '../../src/firebase/authService';
 import { colors, shadowStyle } from '../../src/theme/colors';
-
-const LECTURER_UNITS = [
-  { id: '1', code: 'ICS 2201', name: 'Object Oriented Programming' },
-  { id: '2', code: 'ICS 2202', name: 'Database Systems' },
-  { id: '3', code: 'ICS 2203', name: 'Mobile Computing' },
-  { id: '4', code: 'ICS 2204', name: 'Data Structures' },
-  { id: '5', code: 'ICS 2205', name: 'Operating Systems' },
-  { id: '6', code: 'ICS 2206', name: 'Software Engineering' },
-  { id: '7', code: 'ICS 2207', name: 'Computer Networks' },
-  { id: '8', code: 'ICS 2208', name: 'Artificial Intelligence' },
-];
 
 export default function LecturerDashboard() {
   const router = useRouter();
   const { currentUser, setCurrentUser, activeSession, setActiveSession } = useAttendance();
   const [isActivating, setIsActivating] = useState(false);
+  const [units, setUnits] = useState<Unit[]>([]);
 
-  // Staggered slide-in animations
-  const slideAnims  = useRef(LECTURER_UNITS.map(() => new Animated.Value(50))).current;
-  const opacityAnims = useRef(LECTURER_UNITS.map(() => new Animated.Value(0))).current;
+  // Staggered slide-in animations (capped at 20 for perf)
+  const slideAnims   = useRef(Array.from({ length: 20 }, () => new Animated.Value(50))).current;
+  const opacityAnims = useRef(Array.from({ length: 20 }, () => new Animated.Value(0))).current;
 
   // ── Run entrance animations once ─────────────────────────────────────────
   useEffect(() => {
-    const animations = LECTURER_UNITS.map((_, i) =>
+    const count = Math.min(units.length, 20);
+    const animations = Array.from({ length: count }, (_, i) =>
       Animated.parallel([
-        Animated.timing(slideAnims[i],  { toValue: 0, duration: 400, useNativeDriver: true }),
+        Animated.timing(slideAnims[i],   { toValue: 0, duration: 400, useNativeDriver: true }),
         Animated.timing(opacityAnims[i], { toValue: 1, duration: 400, useNativeDriver: true }),
       ])
     );
     Animated.stagger(80, animations).start();
-  }, []);
+  }, [units]);
+
+  // ── Real-time Firestore listener for this lecturer's units ────────────────
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsub = listenToLecturerUnits(currentUser.uid, setUnits);
+    return unsub;
+  }, [currentUser]);
 
   // ── Real-time Firestore listener for this lecturer's active session ───────
   useEffect(() => {
@@ -84,7 +83,7 @@ export default function LecturerDashboard() {
   };
 
   // ── Activate attendance for a unit ────────────────────────────────────────
-  const handleActivateAttendance = async (unit: (typeof LECTURER_UNITS)[0]) => {
+  const handleActivateAttendance = async (unit: Unit) => {
     if (activeSession) {
       Alert.alert(
         'Session Already Active',
@@ -180,9 +179,18 @@ export default function LecturerDashboard() {
           <Text style={styles.welcomeText}>Welcome, {displayName}</Text>
           <Text style={styles.subtitleText}>Your Assigned Units</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={28} color={colors.white} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => router.push('/(lecturer)/units' as any)}
+            style={styles.manageUnitsBtn}
+          >
+            <Ionicons name="library-outline" size={20} color={colors.white} />
+            <Text style={styles.manageUnitsBtnText}>Manage</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Ionicons name="log-out-outline" size={28} color={colors.white} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Active Session Banner ─────────────────────────────────── */}
@@ -213,7 +221,13 @@ export default function LecturerDashboard() {
 
       {/* ── Unit Cards ───────────────────────────────────────────── */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {LECTURER_UNITS.map((unit, index) => {
+        {units.length === 0 && (
+          <View style={styles.emptyHint}>
+            <Ionicons name="library-outline" size={40} color={colors.textSecondary} />
+            <Text style={styles.emptyHintText}>No units yet. Tap "Manage" to create one.</Text>
+          </View>
+        )}
+        {units.map((unit, index) => {
           const isActive = activeSession?.unitId === unit.id;
 
           return (
@@ -257,7 +271,12 @@ export default function LecturerDashboard() {
 
                 <TouchableOpacity
                   style={[styles.actionButton, styles.materialsButton]}
-                  onPress={() => Alert.alert('Materials', `Opening materials for ${unit.name}…`)}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(lecturer)/unit-materials',
+                      params: { unitId: unit.id, unitName: unit.name, unitCode: unit.code },
+                    } as any)
+                  }
                 >
                   <Ionicons name="cloud-upload" size={20} color={colors.white} />
                   <Text style={styles.actionText}>Materials</Text>
@@ -286,6 +305,17 @@ const styles = StyleSheet.create({
   },
   welcomeText:  { color: colors.white, fontSize: 22, fontWeight: 'bold' },
   subtitleText: { color: colors.white, fontSize: 14, opacity: 0.8, marginTop: 5 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  manageUnitsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 5,
+  },
+  manageUnitsBtnText: { color: colors.white, fontWeight: 'bold', fontSize: 13 },
   logoutButton: { padding: 5, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10 },
 
   activeBanner: {
@@ -330,5 +360,8 @@ const styles = StyleSheet.create({
   endButton:       { backgroundColor: colors.error },
   materialsButton: { backgroundColor: colors.primary },
   actionText:      { color: colors.white, fontWeight: 'bold', marginLeft: 8, fontSize: 13 },
+
+  emptyHint:     { alignItems: 'center', paddingTop: 60, gap: 14 },
+  emptyHintText: { fontSize: 15, color: colors.textSecondary, textAlign: 'center' },
 });
 
