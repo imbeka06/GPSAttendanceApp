@@ -131,9 +131,9 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </Animated.View>
 
-          <Text style={styles.hint}>
-            Your role (student / lecturer) is automatically detected from your account.
-          </Text>
+          <TouchableOpacity onPress={() => router.push('/signup' as any)} style={styles.signupLink}>
+            <Text style={styles.signupLinkText}>Don't have an account? <Text style={styles.signupLinkBold}>Sign Up</Text></Text>
+          </TouchableOpacity>
         </Animated.View>
       </KeyboardAvoidingView>
       <Text style={styles.developerText}>Developer: Imbeka Musa</Text>
@@ -164,6 +164,8 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.6 },
   buttonText:     { color: colors.white, fontSize: 18, fontWeight: 'bold' },
 
-  hint:          { textAlign: 'center', color: '#aaa', fontSize: 12, marginTop: 4 },
+  signupLink:     { alignItems: 'center', marginTop: 6 },
+  signupLinkText: { color: colors.textSecondary, fontSize: 14 },
+  signupLinkBold: { color: colors.primary, fontWeight: 'bold' },
   developerText: { textAlign: 'center', color: colors.primary, fontWeight: 'bold', marginBottom: 20 },
 });
