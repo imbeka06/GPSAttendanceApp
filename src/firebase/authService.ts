@@ -3,10 +3,10 @@
  * Wraps Firebase Auth so the rest of the app never imports firebase/auth directly.
  */
 import {
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  User,
+    signOut as firebaseSignOut,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    User,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './config';
@@ -18,6 +18,10 @@ export interface AppUser {
   email: string;
   role: UserRole;
   displayName: string;
+  /** Populated for students */
+  registrationNumber?: string;
+  /** Populated for lecturers */
+  staffId?: string;
 }
 
 /**
@@ -55,6 +59,8 @@ export async function signIn(email: string, password: string): Promise<AppUser> 
     email: credential.user.email ?? email,
     role: data.role as UserRole,
     displayName: data.displayName ?? email,
+    registrationNumber: data.registrationNumber ?? undefined,
+    staffId: data.staffId ?? undefined,
   };
 }
 
