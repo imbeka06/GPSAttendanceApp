@@ -92,7 +92,7 @@ export default function LoginScreen() {
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <Text style={styles.title}>GPS Attendance App</Text>
           <View style={styles.infoCard}>
-            <Text style={styles.infoName}>Simon Musa Imbeka — SCM211-0676</Text>
+            <Text style={styles.infoName}>Simon Musa Imbeka — SCM211/0676</Text>
             <Text style={styles.infoLine}>CAT: Mobile Computing</Text>
             <Text style={styles.infoLine}>Completed: 27/04/2026</Text>
           </View>
