@@ -91,6 +91,11 @@ export default function LoginScreen() {
       >
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <Text style={styles.title}>GPS Attendance App</Text>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoName}>Simon Musa Imbeka — SCM211-0676</Text>
+            <Text style={styles.infoLine}>CAT: Mobile Computing</Text>
+            <Text style={styles.infoLine}>Completed: 27/04/2026</Text>
+          </View>
           <Text style={styles.subtitle}>Sign in to continue</Text>
 
           <View style={styles.inputContainer}>
@@ -145,8 +150,11 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   container:        { flex: 1, backgroundColor: colors.background },
   content:          { flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
-  title:            { fontSize: 28, fontWeight: 'bold', color: colors.primary, textAlign: 'center', marginBottom: 6 },
-  subtitle:         { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: 36 },
+  title:            { fontSize: 28, fontWeight: 'bold', color: colors.primary, textAlign: 'center', marginBottom: 10 },
+  infoCard:         { backgroundColor: colors.primary + '12', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 14, alignItems: 'center' },
+  infoName:         { fontSize: 13, fontWeight: 'bold', color: colors.primary, marginBottom: 2 },
+  infoLine:         { fontSize: 12, color: colors.textSecondary },
+  subtitle:         { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: 28 },
 
   inputContainer: { marginBottom: 24 },
   label:          { fontSize: 14, color: colors.textSecondary, marginBottom: 6, fontWeight: '600' },
