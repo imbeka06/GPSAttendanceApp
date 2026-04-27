@@ -3,12 +3,13 @@
  * Wraps Firebase Auth so the rest of the app never imports firebase/auth directly.
  */
 import {
+    createUserWithEmailAndPassword,
     signOut as firebaseSignOut,
     onAuthStateChanged,
     signInWithEmailAndPassword,
     User,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './config';
 
 export type UserRole = 'student' | 'lecturer';
@@ -67,6 +68,70 @@ export async function signIn(email: string, password: string): Promise<AppUser> 
 /** Sign the current user out of Firebase Auth. */
 export async function signOut(): Promise<void> {
   await firebaseSignOut(auth);
+}
+
+export interface SignUpData {
+  role: UserRole;
+  displayName: string;
+  email: string;
+  password: string;
+  registrationNumber?: string; // students
+  staffId?: string;            // lecturers
+}
+
+/**
+ * Create a new Firebase Auth account and write the user doc to Firestore.
+ * Returns the new AppUser on success.
+ */
+export async function signUp(data: SignUpData): Promise<AppUser> {
+  let credential;
+  try {
+    credential = await createUserWithEmailAndPassword(auth, data.email.trim().toLowerCase(), data.password);
+  } catch (err: any) {
+    switch (err.code) {
+      case 'auth/email-already-in-use':
+        throw new Error('An account with this email already exists.');
+      case 'auth/invalid-email':
+        throw new Error('Please enter a valid email address.');
+      case 'auth/weak-password':
+        throw new Error('Password must be at least 6 characters.');
+      default:
+        throw new Error('Registration failed. Check your internet connection.');
+    }
+  }
+
+  const uid = credential.user.uid;
+  const userDoc: Record<string, any> = {
+    uid,
+    email: data.email.trim().toLowerCase(),
+    role: data.role,
+    displayName: data.displayName.trim(),
+    createdAt: new Date().toISOString(),
+  };
+
+  if (data.role === 'student' && data.registrationNumber) {
+    userDoc.registrationNumber = data.registrationNumber.trim().toUpperCase();
+  }
+  if (data.role === 'lecturer' && data.staffId) {
+    userDoc.staffId = data.staffId.trim().toUpperCase();
+  }
+
+  try {
+    await setDoc(doc(db, 'users', uid), userDoc);
+  } catch (err: any) {
+    // Auth user was created but Firestore write failed — delete the orphan Auth account
+    await credential.user.delete();
+    throw new Error('Could not save your account details. Please try again.');
+  }
+
+  return {
+    uid,
+    email: userDoc.email,
+    role: data.role,
+    displayName: userDoc.displayName,
+    registrationNumber: userDoc.registrationNumber,
+    staffId: userDoc.staffId,
+  };
 }
 
 /**
