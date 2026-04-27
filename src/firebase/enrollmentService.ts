@@ -12,11 +12,12 @@
  *   enrollment client-side before rendering the materials screen.
  */
 import {
-    addDoc,
     collection,
+    doc,
     getDocs,
     query,
     serverTimestamp,
+    setDoc,
     where,
 } from 'firebase/firestore';
 import { db } from './config';
@@ -53,7 +54,8 @@ export async function joinUnitByCode(params: {
   const unitData = unitDoc.data();
   const unitId = unitDoc.id;
 
-  // 2. Check if already enrolled
+  // 2. Check if already enrolled (predictable doc ID: studentUid_unitId)
+  const enrollmentId = `${studentUid}_${unitId}`;
   const existing = await getDocs(
     query(
       collection(db, 'enrollments'),
@@ -66,8 +68,8 @@ export async function joinUnitByCode(params: {
     throw new Error(`You are already enrolled in ${unitData.code} — ${unitData.name}.`);
   }
 
-  // 3. Create enrollment record
-  await addDoc(collection(db, 'enrollments'), {
+  // 3. Create enrollment record with predictable ID so Firestore rules can exists() check it
+  await setDoc(doc(db, 'enrollments', enrollmentId), {
     studentUid,
     registrationNumber,
     unitId,
@@ -85,12 +87,7 @@ export async function isStudentEnrolled(
   studentUid: string,
   unitId: string
 ): Promise<boolean> {
-  const snap = await getDocs(
-    query(
-      collection(db, 'enrollments'),
-      where('studentUid', '==', studentUid),
-      where('unitId', '==', unitId)
-    )
-  );
-  return !snap.empty;
+  const { getDoc } = await import('firebase/firestore');
+  const snap = await getDoc(doc(db, 'enrollments', `${studentUid}_${unitId}`));
+  return snap.exists();
 }
