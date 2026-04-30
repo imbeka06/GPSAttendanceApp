@@ -16,6 +16,35 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Build a shareable APK
+
+This project is configured as an Expo managed app, so the fastest path to a direct-install Android package is an EAS APK build rather than Android Studio's `Build APK(s)` flow.
+
+1. Install Expo/EAS tooling if needed
+
+   ```bash
+   npm install
+   npm install -g eas-cli
+   ```
+
+2. Sign in to Expo
+
+   ```bash
+   eas login
+   ```
+
+3. Build the APK
+
+   ```bash
+   npm run build:apk
+   ```
+
+4. When the build finishes, download the generated `.apk` from the EAS build page.
+
+5. Upload that APK to a file host such as GitHub Releases, Firebase App Distribution, Google Drive, or Dropbox and share the download link.
+
+Users can then open the link on Android, download the APK, and install it after allowing their browser to install unknown apps.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
