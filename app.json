@@ -47,7 +47,8 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withAdiRegistration"
     ],
     "experiments": {
       "typedRoutes": true,
