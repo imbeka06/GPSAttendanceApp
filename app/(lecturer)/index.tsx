@@ -118,6 +118,14 @@ export default function LecturerDashboard() {
       }
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+      const accuracy = loc.coords.accuracy ?? null;
+      if (accuracy !== null && accuracy > 40) {
+        Alert.alert(
+          'Weak GPS Signal',
+          `Location accuracy is currently about ${Math.round(accuracy)}m. Move to an open area and activate attendance again.`
+        );
+        return;
+      }
 
       // Step 3 — Write session to Firestore
       await startAttendanceSession({
