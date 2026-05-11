@@ -116,6 +116,16 @@ export default function DashboardScreen() {
       }
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+      const accuracy = loc.coords.accuracy ?? null;
+      if (accuracy !== null && accuracy > 40) {
+        setStatusMessage(`Weak GPS signal (${Math.round(accuracy)}m accuracy)`);
+        Alert.alert(
+          'Weak GPS Signal',
+          `Your phone location is only accurate to about ${Math.round(accuracy)}m. Move to an open area and try again.`
+        );
+        return;
+      }
+
       const distance = getDistanceInMeters(
         loc.coords.latitude,
         loc.coords.longitude,
