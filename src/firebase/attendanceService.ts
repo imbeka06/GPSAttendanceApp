@@ -123,7 +123,12 @@ export function listenToAnyActiveSession(
       onChange(null);
       return;
     }
-    const d = snap.docs[0];
+    // Pick the newest active session deterministically to avoid random doc order.
+    const d = [...snap.docs].sort((a, b) => {
+      const aMs = a.data().startedAt?.toDate ? a.data().startedAt.toDate().getTime() : 0;
+      const bMs = b.data().startedAt?.toDate ? b.data().startedAt.toDate().getTime() : 0;
+      return bMs - aMs;
+    })[0];
     const data = d.data();
     onChange({
       id: d.id,
